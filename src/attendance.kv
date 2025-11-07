@@ -1,0 +1,786 @@
+#:kivy 2.0
+
+<LoginScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(200), dp(120), dp(200), dp(120)
+        spacing: dp(25)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Attendance Manager'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.15
+
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: dp(12)
+            size_hint_y: 0.3
+
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: 'Class:'
+                    size_hint_x: 0.2
+                    color: 0, 0, 0, 1
+                TextInput:
+                    id: class_input
+                    hint_text: 'Class name (e.g., class12A)'
+                    multiline: False
+                    size_hint_x: 0.8
+                    foreground_color: 0, 0, 0, 1
+                    background_color: 1, 1, 1, 1
+                    padding: dp(8), dp(6)
+
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: 'Password:'
+                    size_hint_x: 0.2
+                    color: 0, 0, 0, 1
+                TextInput:
+                    id: password_input
+                    hint_text: 'Password'
+                    multiline: False
+                    password: True
+                    size_hint_x: 0.8
+                    foreground_color: 0, 0, 0, 1
+                    background_color: 1, 1, 1, 1
+                    padding: dp(8), dp(6)
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(12)
+            size_hint_y: 0.15
+
+            Button:
+                text: 'Login'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_login()
+
+            Button:
+                text: 'Create Class'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_create_class()
+
+            Button:
+                text: 'Quit'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: app.stop()
+
+        Label:
+            text: 'Use the class or admin password to log in.'
+            font_size: '12sp'
+            color: 0.4, 0.4, 0.4, 1
+            size_hint_y: 0.1
+
+<DashboardScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(25)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Dashboard'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.08
+            spacing: dp(15)
+            
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            Label:
+                text: root.class_name
+                size_hint_x: 0.3
+                bold: True
+                color: 0.2, 0.2, 0.2, 1
+            
+            Widget:
+                size_hint_x: 0.4
+            
+            Label:
+                text: 'Date:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            Label:
+                text: root.current_date
+                size_hint_x: 0.3
+                color: 0, 0, 0, 1
+
+        GridLayout:
+            cols: 3
+            spacing: dp(15)
+            size_hint_y: 0.25
+
+            Button:
+                text: 'View Students'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'display'
+
+            Button:
+                text: 'Select Absent'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'select_absent'
+
+            Button:
+                text: 'Mark All Present'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_mark_all_present()
+
+            Button:
+                text: 'Add Student'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'add_student'
+
+            Button:
+                text: 'Import CSV'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'import_csv'
+
+            Button:
+                text: 'Delete Students'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'delete'
+
+        BoxLayout:
+            size_hint_y: 0.08
+            Button:
+                text: 'Attendance History'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                size_hint_x: 0.4
+                pos_hint: {'center_x': 0.5}
+                on_press: root.manager.current = 'history'
+
+        BoxLayout:
+            size_hint_y: 0.08
+            Button:
+                text: 'Logout'
+                background_color: 0.851, 0.325, 0.310, 1
+                background_normal: ''
+                size_hint_x: 0.3
+                pos_hint: {'center_x': 0.5}
+                on_press: root.on_logout()
+
+        Label:
+            text: 'Preview (first 50 students):'
+            font_size: '12sp'
+            bold: True
+            color: 0.267, 0.267, 0.267, 1
+            size_hint_y: 0.05
+            halign: 'left'
+            text_size: self.size
+
+        ScrollView:
+            size_hint_y: 0.35
+            canvas.before:
+                Color:
+                    rgba: 0.976, 0.976, 0.976, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(8)]
+
+            GridLayout:
+                id: preview_list
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(6)
+                spacing: dp(2)
+
+<DisplayScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(20)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Students & Attendance (editable)'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.08
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: class_input
+                multiline: False
+                size_hint_x: 0.25
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Label:
+                text: 'Date:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: date_input
+                hint_text: 'YYYY-MM-DD'
+                multiline: False
+                size_hint_x: 0.2
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Button:
+                text: 'Load'
+                size_hint_x: 0.1
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.load_table_for_date()
+
+            Button:
+                text: 'Save Changes'
+                size_hint_x: 0.15
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.save_changes()
+
+            Button:
+                text: 'Export CSV'
+                size_hint_x: 0.1
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.export_csv()
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.05
+            padding: dp(5)
+            Label:
+                text: 'Roll No'
+                size_hint_x: 0.2
+                bold: True
+                color: 0, 0, 0, 1
+            Label:
+                text: 'Student Name'
+                size_hint_x: 0.5
+                bold: True
+                color: 0, 0, 0, 1
+            Label:
+                text: 'Attendance'
+                size_hint_x: 0.3
+                bold: True
+                color: 0, 0, 0, 1
+
+        ScrollView:
+            size_hint_y: 0.7
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(6)]
+
+            GridLayout:
+                id: table_container
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(5)
+                spacing: dp(3)
+
+        Button:
+            text: 'Back'
+            size_hint_y: 0.08
+            background_color: 0.00392, 0.471, 0.831, 1
+            background_normal: ''
+            on_press: root.manager.current = 'dashboard'
+
+<SelectAbsentScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(16)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Select Absentees'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: class_input
+                multiline: False
+                size_hint_x: 0.25
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Label:
+                text: 'Date:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: date_input
+                hint_text: 'YYYY-MM-DD'
+                multiline: False
+                size_hint_x: 0.2
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Button:
+                text: 'Load Students'
+                size_hint_x: 0.15
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.load_students()
+
+        ScrollView:
+            size_hint_y: 0.6
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(6)]
+
+            GridLayout:
+                id: students_container
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(10)
+                spacing: dp(5)
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Button:
+                text: 'Back'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'dashboard'
+
+            Button:
+                text: 'Clear Selection'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.clear_selection()
+
+            Button:
+                text: 'Mark Selected Absent'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.mark_selected_absent()
+
+<AddStudentScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Add Student'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.15
+
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: dp(15)
+            size_hint_y: 0.4
+
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: 'Student name:'
+                    size_hint_x: 0.3
+                    color: 0, 0, 0, 1
+                TextInput:
+                    id: name_input
+                    multiline: False
+                    size_hint_x: 0.7
+                    foreground_color: 0, 0, 0, 1
+                    background_color: 1, 1, 1, 1
+
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: 'Roll no:'
+                    size_hint_x: 0.3
+                    color: 0, 0, 0, 1
+                TextInput:
+                    id: roll_input
+                    multiline: False
+                    size_hint_x: 0.7
+                    input_filter: 'int'
+                    foreground_color: 0, 0, 0, 1
+                    background_color: 1, 1, 1, 1
+
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: 'Class:'
+                    size_hint_x: 0.3
+                    color: 0, 0, 0, 1
+                TextInput:
+                    id: class_input
+                    multiline: False
+                    size_hint_x: 0.7
+                    foreground_color: 0, 0, 0, 1
+                    background_color: 1, 1, 1, 1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.12
+
+            Button:
+                text: 'Back'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'dashboard'
+
+            Button:
+                text: 'Add'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_add()
+
+        Widget:
+            size_hint_y: 0.33
+
+<ImportCSVScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Import CSV'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.15
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.1
+
+            TextInput:
+                id: file_input
+                hint_text: 'path/to/file.csv'
+                multiline: False
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Button:
+                text: 'Browse'
+                size_hint_x: 0.2
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.browse()
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.1
+
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.2
+                color: 0, 0, 0, 1
+            TextInput:
+                id: class_input
+                multiline: False
+                size_hint_x: 0.8
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.1
+
+            Button:
+                text: 'Back'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'dashboard'
+
+            Button:
+                text: 'Import'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_import()
+
+        Widget:
+            size_hint_y: 0.55
+
+<DeleteScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Delete Students'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.15
+                color: 0, 0, 0, 1
+            TextInput:
+                id: class_input
+                multiline: False
+                size_hint_x: 0.65
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Button:
+                text: 'Load'
+                size_hint_x: 0.2
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.load_students()
+
+        ScrollView:
+            size_hint_y: 0.65
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(6)]
+
+            GridLayout:
+                id: students_container
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(10)
+                spacing: dp(5)
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Button:
+                text: 'Back'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'dashboard'
+
+            Button:
+                text: 'Delete Selected'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.on_delete()
+
+<HistoryScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(60), dp(40), dp(60), dp(40)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.953, 0.965, 0.980, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            text: 'Attendance History'
+            font_size: '22sp'
+            bold: True
+            color: 0.102, 0.102, 0.102, 1
+            size_hint_y: 0.08
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Label:
+                text: 'Class:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: class_input
+                multiline: False
+                size_hint_x: 0.25
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Label:
+                text: 'Date:'
+                size_hint_x: 0.1
+                color: 0, 0, 0, 1
+            TextInput:
+                id: date_input
+                hint_text: 'YYYY-MM-DD'
+                multiline: False
+                size_hint_x: 0.2
+                foreground_color: 0, 0, 0, 1
+                background_color: 1, 1, 1, 1
+
+            Button:
+                text: 'Load'
+                size_hint_x: 0.15
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.load_history()
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.05
+            padding: dp(5)
+            Label:
+                text: 'Roll No'
+                size_hint_x: 0.2
+                bold: True
+                color: 0, 0, 0, 1
+            Label:
+                text: 'Student Name'
+                size_hint_x: 0.5
+                bold: True
+                color: 0, 0, 0, 1
+            Label:
+                text: 'Attendance'
+                size_hint_x: 0.3
+                bold: True
+                color: 0, 0, 0, 1
+
+        ScrollView:
+            size_hint_y: 0.65
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(6)]
+
+            GridLayout:
+                id: history_container
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(5)
+                spacing: dp(3)
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: 0.08
+
+            Button:
+                text: 'Back'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.manager.current = 'dashboard'
+
+            Button:
+                text: 'Export CSV'
+                background_color: 0.00392, 0.471, 0.831, 1
+                background_normal: ''
+                on_press: root.export_csv()
