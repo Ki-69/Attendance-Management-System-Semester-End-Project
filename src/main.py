@@ -37,6 +37,7 @@ db = dbmod.AttendanceDB(
     database=DB_NAME,
     admin_password=ADMIN_PASSWORD,
 )
+#test for git
 
 # ---------- Small utilities ----------
 def show_error(title: str, msg: str):
