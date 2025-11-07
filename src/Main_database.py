@@ -1,21 +1,26 @@
-import mysql.connector
+import sqlite3
 from datetime import datetime
 import csv
 import re
 from typing import List, Iterable, Optional
 import hashlib
+import os
 
 class AttendanceDB:
     IDENTIFIER_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
-    def __init__(self, host: str, user: str, password: str, database: str, admin_password: str = "123"):
-        self.host = host
-        self.user = user
-        self.password = password
-        self.database = database
+    def __init__(self, db_path: str = "attendance.db", admin_password: str = "123"):
+        """
+        Initialize SQLite database connection.
+        
+        Args:
+            db_path: Path to SQLite database file (default: attendance.db)
+            admin_password: Master admin password for override access
+        """
+        self.db_path = db_path
         self.admin_password = admin_password
-        self.conn: Optional[mysql.connector.connection.MySQLConnection] = None
-        self.cursor: Optional[mysql.connector.cursor.MySQLCursor] = None
+        self.conn: Optional[sqlite3.Connection] = None
+        self.cursor: Optional[sqlite3.Cursor] = None
 
     def _validate_identifier(self, name: str) -> None:
         """Ensure table/column identifier is safe (letters, digits, underscores; starts with letter)."""
@@ -30,18 +35,15 @@ class AttendanceDB:
 
     def connect(self) -> bool:
         """Open connection and cursor if not already open. Returns True on success."""
-        if self.conn is not None and self.conn.is_connected():
+        if self.conn is not None:
             return True
         try:
-            self.conn = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database,
-            )
-            self.cursor = self.conn.cursor(buffered=True)
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            # Enable foreign keys
+            self.cursor.execute("PRAGMA foreign_keys = ON;")
             return True
-        except mysql.connector.Error as e:
+        except sqlite3.Error as e:
             raise ConnectionError(f"Error connecting to the database: {e}") from e
 
     def close(self) -> None:
@@ -62,7 +64,11 @@ class AttendanceDB:
     def store_table_names(self) -> List[str]:
         """Return list of tables (class names) in the current database."""
         self.connect()
-        self.cursor.execute("SHOW TABLES;")
+        self.cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'class_passwords'
+            ORDER BY name;
+        """)
         rows = self.cursor.fetchall()
         return [r[0] for r in rows]
 
@@ -71,11 +77,11 @@ class AttendanceDB:
         self._validate_identifier(class_name)
         self.connect()
         query = f"""
-        CREATE TABLE IF NOT EXISTS `{class_name}` (
-            Student_id INT AUTO_INCREMENT PRIMARY KEY,
-            Student_name VARCHAR(255) NOT NULL,
-            Roll_no INT NOT NULL UNIQUE
-        ) ENGINE=InnoDB;
+        CREATE TABLE IF NOT EXISTS "{class_name}" (
+            Student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Student_name TEXT NOT NULL,
+            Roll_no INTEGER NOT NULL UNIQUE
+        );
         """
         self.cursor.execute(query)
         self.conn.commit()
@@ -90,16 +96,19 @@ class AttendanceDB:
         self._validate_identifier(class_name)
         self.connect()
         pw_hash = self._hash_password(password)
+        
+        # Create password table if not exists
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS class_passwords (
-                class_name VARCHAR(255) PRIMARY KEY,
-                password_hash VARCHAR(255) NOT NULL
+                class_name TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL
             );
         """)
+        
+        # Insert or replace password
         self.cursor.execute("""
-            INSERT INTO class_passwords (class_name, password_hash)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);
+            INSERT OR REPLACE INTO class_passwords (class_name, password_hash)
+            VALUES (?, ?);
         """, (class_name, pw_hash))
         self.conn.commit()
 
@@ -108,7 +117,7 @@ class AttendanceDB:
         self._validate_identifier(class_name)
         self.connect()
         self.cursor.execute("""
-            SELECT password_hash FROM class_passwords WHERE class_name=%s;
+            SELECT password_hash FROM class_passwords WHERE class_name=?;
         """, (class_name,))
         row = self.cursor.fetchone()
         return row[0] if row else None
@@ -127,18 +136,20 @@ class AttendanceDB:
         if class_name not in self.store_table_names():
             raise ValueError(f"Authentication failed: class/table '{class_name}' not found.")
 
+        # Admin password override
         if password == self.admin_password:
-            query = f"SELECT Roll_no, Student_name FROM `{class_name}` ORDER BY Roll_no;"
+            query = f'SELECT Roll_no, Student_name FROM "{class_name}" ORDER BY Roll_no;'
             self.cursor.execute(query)
             return self.cursor.fetchall()
 
+        # Check class-specific password
         stored_hash = self.get_class_password_hash(class_name)
         if stored_hash is None:
             raise ValueError(f"No password set for class '{class_name}'. Please set one.")
         if stored_hash != self._hash_password(password):
             raise ValueError("Authentication failed: incorrect password.")
 
-        query = f"SELECT Roll_no, Student_name FROM `{class_name}` ORDER BY Roll_no;"
+        query = f'SELECT Roll_no, Student_name FROM "{class_name}" ORDER BY Roll_no;'
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
@@ -146,8 +157,9 @@ class AttendanceDB:
     def _column_exists(self, table: str, column: str) -> bool:
         """Return True if column exists in table."""
         self.connect()
-        self.cursor.execute(f"SHOW COLUMNS FROM `{table}` LIKE %s;", (column,))
-        return self.cursor.fetchone() is not None
+        self.cursor.execute(f'PRAGMA table_info("{table}");')
+        columns = [row[1] for row in self.cursor.fetchall()]
+        return column in columns
 
     def add_columns_for_today(self, dt: Optional[datetime] = None) -> None:
         """
@@ -160,18 +172,17 @@ class AttendanceDB:
             return
 
         col = self._date_column_name(dt)
-        tables = [t for t in self.store_table_names() if t != "class_passwords"]
+        tables = self.store_table_names()
+        
         for table in tables:
             self._validate_identifier(table)
             try:
                 if not self._column_exists(table, col):
-                    alter = f"ALTER TABLE `{table}` ADD COLUMN `{col}` VARCHAR(20) DEFAULT 'Absent';"
+                    alter = f'ALTER TABLE "{table}" ADD COLUMN "{col}" TEXT DEFAULT "Absent";'
                     self.cursor.execute(alter)
                     self.conn.commit()
-            except mysql.connector.Error as e:
-
+            except sqlite3.Error as e:
                 raise RuntimeError(f"Failed to add column {col} to {table}: {e}") from e
-
 
     # Marking attendance
     def mark_all_present(self, class_name: str, dt: Optional[datetime] = None) -> None:
@@ -181,11 +192,10 @@ class AttendanceDB:
         self.connect()
 
         if not self._column_exists(class_name, col):
-
-            self.cursor.execute(f"ALTER TABLE `{class_name}` ADD COLUMN `{col}` VARCHAR(20) DEFAULT 'Absent';")
+            self.cursor.execute(f'ALTER TABLE "{class_name}" ADD COLUMN "{col}" TEXT DEFAULT "Absent";')
             self.conn.commit()
 
-        update = f"UPDATE `{class_name}` SET `{col}` = %s;"
+        update = f'UPDATE "{class_name}" SET "{col}" = ?;'
         self.cursor.execute(update, ("Present",))
         self.conn.commit()
 
@@ -201,19 +211,20 @@ class AttendanceDB:
 
         col = self._date_column_name(dt)
         self.connect()
+        
         if not self._column_exists(class_name, col):
-            self.cursor.execute(f"ALTER TABLE `{class_name}` ADD COLUMN `{col}` VARCHAR(20) DEFAULT 'Absent';")
+            self.cursor.execute(f'ALTER TABLE "{class_name}" ADD COLUMN "{col}" TEXT DEFAULT "Absent";')
             self.conn.commit()
 
-        placeholders = ",".join(["%s"] * len(rolls))
-        query = f"UPDATE `{class_name}` SET `{col}` = %s WHERE Roll_no IN ({placeholders});"
+        placeholders = ",".join(["?"] * len(rolls))
+        query = f'UPDATE "{class_name}" SET "{col}" = ? WHERE Roll_no IN ({placeholders});'
         params = ["Absent"] + rolls
         self.cursor.execute(query, tuple(params))
         self.conn.commit()
 
     # Inserts / deletes
     def add_data_from_csv(self, path: str, class_name: str, has_header: bool = False) -> None:
-        """Insert rows from CSV file (Student_name, Roll_no). Uses ON DUPLICATE KEY UPDATE to update name if roll exists."""
+        """Insert rows from CSV file (Student_name, Roll_no). Uses INSERT OR REPLACE to update name if roll exists."""
         self._validate_identifier(class_name)
         self.connect()
         self.create_table_for_class(class_name)
@@ -235,12 +246,15 @@ class AttendanceDB:
             if not rows_to_insert:
                 return
 
-            query = f"""
-            INSERT INTO `{class_name}` (Student_name, Roll_no)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE Student_name = VALUES(Student_name);
-            """
-            self.cursor.executemany(query, rows_to_insert)
+            # SQLite doesn't have ON DUPLICATE KEY UPDATE, so we use INSERT OR REPLACE
+            # But we need to preserve Student_id, so we first check if exists
+            for name, roll in rows_to_insert:
+                self.cursor.execute(f"""
+                    INSERT INTO "{class_name}" (Student_name, Roll_no)
+                    VALUES (?, ?)
+                    ON CONFLICT(Roll_no) DO UPDATE SET Student_name = excluded.Student_name;
+                """, (name, roll))
+            
             self.conn.commit()
 
     def add_individual(self, class_name: str, student_name: str, roll_no: int) -> None:
@@ -248,10 +262,11 @@ class AttendanceDB:
         self._validate_identifier(class_name)
         self.connect()
         self.create_table_for_class(class_name)
+        
         query = f"""
-        INSERT INTO `{class_name}` (Student_name, Roll_no)
-        VALUES (%s, %s)
-        ON DUPLICATE KEY UPDATE Student_name = VALUES(Student_name);
+        INSERT INTO "{class_name}" (Student_name, Roll_no)
+        VALUES (?, ?)
+        ON CONFLICT(Roll_no) DO UPDATE SET Student_name = excluded.Student_name;
         """
         self.cursor.execute(query, (student_name, int(roll_no)))
         self.conn.commit()
@@ -263,8 +278,8 @@ class AttendanceDB:
         if not rolls:
             return
         self.connect()
-        placeholders = ",".join(["%s"] * len(rolls))
-        query = f"DELETE FROM `{class_name}` WHERE Roll_no IN ({placeholders});"
+        placeholders = ",".join(["?"] * len(rolls))
+        query = f'DELETE FROM "{class_name}" WHERE Roll_no IN ({placeholders});'
         self.cursor.execute(query, tuple(rolls))
         self.conn.commit()
 
@@ -272,14 +287,37 @@ class AttendanceDB:
         """Delete every student row in the class (keeps table schema)."""
         self._validate_identifier(class_name)
         self.connect()
-        query = f"DELETE FROM `{class_name}`;"
+        query = f'DELETE FROM "{class_name}";'
         self.cursor.execute(query)
         self.conn.commit()
 
+
 if __name__ == "__main__":
-    db = AttendanceDB("localhost", "root", "tsukasa911", "attendance", admin_password="parkar")
+    # Example usage
+    db = AttendanceDB("attendance.db", admin_password="123")
 
     try:
         db.connect()
+        print("✓ Connected to SQLite database")
+        
+        # Test creating a class
+        db.create_table_for_class("TestClass")
+        print("✓ Created test class table")
+        
+        # Test setting password
+        db.set_class_password("TestClass", "test123")
+        print("✓ Set class password")
+        
+        # Test adding student
+        db.add_individual("TestClass", "John Doe", 101)
+        print("✓ Added student")
+        
+        # Test authentication
+        students = db.authenticate_user("TestClass", "test123")
+        print(f"✓ Authenticated and retrieved {len(students)} students")
+        
+        db.close()
+        print("✓ Database operations completed successfully")
+        
     except Exception as e:
-        raise SystemExit(f"Cannot connect to DB: {e}")
+        print(f"✗ Error: {e}")

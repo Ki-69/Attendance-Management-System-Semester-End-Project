@@ -23,33 +23,27 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 
 # ---------- CONFIG ----------
-DB_HOST = "localhost"
-DB_USER = "root"
-DB_PASSWORD = #Enter Password here
-DB_NAME = "attendance"
+# For Android, use internal storage path
+DB_PATH = "attendance.db"  # SQLite database file
 ADMIN_PASSWORD = "123"
 
 # instantiate DB wrapper
 db = dbmod.AttendanceDB(
-    host=DB_HOST,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    database=DB_NAME,
+    db_path=DB_PATH,
     admin_password=ADMIN_PASSWORD,
 )
-#test for git
 
 # ---------- Small utilities ----------
 def show_error(title: str, msg: str):
     popup = Popup(title=title,
-                  content=Label(text=msg, color=(0, 0, 0, 1)),
-                  size_hint=(0.6, 0.4))
+                content=Label(text=msg, color=(0, 0, 0, 1)),
+                size_hint=(0.6, 0.4))
     popup.open()
 
 def show_info(title: str, msg: str):
     popup = Popup(title=title,
-                  content=Label(text=msg, color=(0, 0, 0, 1)),
-                  size_hint=(0.6, 0.4))
+                content=Label(text=msg, color=(0, 0, 0, 1)),
+                size_hint=(0.6, 0.4))
     popup.open()
 
 def is_valid_identifier(name: str) -> bool:
@@ -300,11 +294,11 @@ class DisplayScreen(Screen):
             db.connect()
             if not db._column_exists(class_name, colname):
                 db.cursor.execute(
-                    f"ALTER TABLE `{class_name}` ADD COLUMN `{colname}` VARCHAR(20) DEFAULT 'Absent';"
+                    f'ALTER TABLE "{class_name}" ADD COLUMN "{colname}" TEXT DEFAULT "Absent";'
                 )
                 db.conn.commit()
 
-            q = f"SELECT Roll_no, Student_name, `{colname}` FROM `{class_name}` ORDER BY Roll_no;"
+            q = f'SELECT Roll_no, Student_name, "{colname}" FROM "{class_name}" ORDER BY Roll_no;'
             db.cursor.execute(q)
             rows = db.cursor.fetchall()
 
@@ -361,7 +355,7 @@ class DisplayScreen(Screen):
             db.connect()
             if not db._column_exists(class_name, colname):
                 db.cursor.execute(
-                    f"ALTER TABLE `{class_name}` ADD COLUMN `{colname}` VARCHAR(20) DEFAULT 'Absent';"
+                    f'ALTER TABLE "{class_name}" ADD COLUMN "{colname}" TEXT DEFAULT "Absent";'
                 )
                 db.conn.commit()
 
@@ -376,12 +370,12 @@ class DisplayScreen(Screen):
 
                 if name_val:
                     db.cursor.execute(
-                        f"UPDATE `{class_name}` SET Student_name=%s WHERE Roll_no=%s;",
+                        f'UPDATE "{class_name}" SET Student_name=? WHERE Roll_no=?;',
                         (name_val, roll),
                     )
 
                 db.cursor.execute(
-                    f"UPDATE `{class_name}` SET `{colname}`=%s WHERE Roll_no=%s;",
+                    f'UPDATE "{class_name}" SET "{colname}"=? WHERE Roll_no=?;',
                     (att_val, roll),
                 )
 
@@ -506,7 +500,7 @@ class SelectAbsentScreen(Screen):
 
         try:
             if not db._column_exists(class_name, dt.strftime("%Y_%m_%d")):
-                db.cursor.execute(f"ALTER TABLE `{class_name}` ADD COLUMN `{dt.strftime('%Y_%m_%d')}` VARCHAR(20) DEFAULT 'Absent';")
+                db.cursor.execute(f'ALTER TABLE "{class_name}" ADD COLUMN "{dt.strftime("%Y_%m_%d")}" TEXT DEFAULT "Absent";')
                 db.conn.commit()
             db.custom_marking_absent(class_name, selected, dt)
             AppState.set_absent(selected)
@@ -724,12 +718,12 @@ class HistoryScreen(Screen):
 
             if not db._column_exists(class_name, colname):
                 show_info("No data", f"No attendance recorded for {dt.strftime('%Y-%m-%d')} (column missing).")
-                q = f"SELECT Roll_no, Student_name FROM `{class_name}` ORDER BY Roll_no;"
+                q = f'SELECT Roll_no, Student_name FROM "{class_name}" ORDER BY Roll_no;'
                 db.cursor.execute(q)
                 rows = db.cursor.fetchall()
                 attendance_default = [(r[0], r[1], "Absent") for r in rows]
             else:
-                q = f"SELECT Roll_no, Student_name, `{colname}` FROM `{class_name}` ORDER BY Roll_no;"
+                q = f'SELECT Roll_no, Student_name, "{colname}" FROM "{class_name}" ORDER BY Roll_no;'
                 db.cursor.execute(q)
                 rows = db.cursor.fetchall()
                 attendance_default = [(r[0], r[1], r[2] if r[2] is not None else "Absent") for r in rows]
