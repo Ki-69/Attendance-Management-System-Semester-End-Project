@@ -25,7 +25,7 @@ from kivy.clock import Clock
 # ---------- CONFIG ----------
 DB_HOST = "localhost"
 DB_USER = "root"
-DB_PASSWORD = "tsukasa911"
+DB_PASSWORD = #Enter Password here
 DB_NAME = "attendance"
 ADMIN_PASSWORD = "123"
 
